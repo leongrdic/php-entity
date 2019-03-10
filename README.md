@@ -1,5 +1,4 @@
 # php-entity
-## Getting started
 An entity is an object that represents a single row in a specific table in a database of choice.
 
 Entity class defines which database and table the entities are stored in and information about the table columns, and also the relations between different entity classes.
@@ -10,6 +9,7 @@ Entities can also have optional hashes which are generated on each update of the
 
 Each entity must have an ID which can be either numeric or a string (e.g. UUID).
 
+## Getting started
 ### Using Composer
 You can install `php-entity` using
 ```
@@ -65,7 +65,7 @@ All following methods can only be called on classes that extend the `\Le\Entity`
 #### Return
 Returns the entity `object`.
 
-If the entity can't be found, an `EntityNotFoundException` is thrown.
+If the entity can't be found, a `\Le\EntityNotFoundException` is thrown.
 
 ### `hash($id, $hash)`
 Compares a hash of an entity to a provided hash.
@@ -78,7 +78,7 @@ Compares a hash of an entity to a provided hash.
 #### Return
 Returns `true` if the hashes match, or `false` if they don't (or the entity class doesn't use hashes).
 
-If the entity can't be found, an `EntityNotFoundException` is thrown.
+If the entity can't be found, an `\Le\EntityNotFoundException` is thrown.
 
 ### `find($conditions, $additional, $return_objects)`
 #### Parameters
@@ -197,14 +197,14 @@ To enable debugging, set the static variable `$debug` of the class to `true`:
 
 When debugging is turned on, the methods can throw `Error`s containing information about what went wrong.
 
-Besides the debugging errors, `php-db-pdo-mysql` throws some exceptions like `EntityNotFoundException`.
+Besides the debugging errors, `php-db-pdo-mysql` throws some exceptions like `\Le\EntityNotFoundException`.
 
 To ensure your actions were finished successfully use a `try-catch` block around the methods that throw the exceptions:
 ```php
 try {
   $entity = User::load($id);
 }
-catch(EntityNotFoundException $e){
+catch(\Le\EntityNotFoundException $e){
   echo 'entity not found';
 }
 ```
