@@ -1,7 +1,7 @@
 {
   "name": "leongrdic/entity",
   "type": "library",
-  "description": "A class that defines a model of an entity represented by a single row in a database",
+  "description": "Handles storing and getting entities (objects) from a database",
   "keywords": ["entity", "object", "database", "model"],
   "license": "MIT",
   "authors": [
@@ -11,9 +11,10 @@
     }
   ],
   "require": {
-    "php": ">=5.4.0",
-    "leongrdic/db-pdo-mysql": "^3.1.0",
-    "leongrdic/exception": "^1.0.0"
+    "php": ">=7.0"
+  },
+  "suggest": {
+    "leongrdic/db-pdo-mysql": "A compatible database module"
   },
   "autoload": {
     "psr-4": {
