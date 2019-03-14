@@ -26,7 +26,7 @@ abstract class Entity {
 		return $object;
 	}
 
-	final public static function hash($id, $hash){
+	public static function hash($id, $hash){
 		if(self::$debug){
 			if(get_called_class() === 'Le\Entity') throw new Error("DEBUG: can only be called from a class that extends the Entity class");
 			if(!isset(static::$db) || !isset(static::$table)) throw new Error("DEBUG: entity class missing database or table");
@@ -40,7 +40,7 @@ abstract class Entity {
 		return ($entity['data'][static::$column_hash] == $hash);
 	}
 
-	final public static function create($data){
+	public static function create($data){
 		if(self::$debug){
 			if(get_called_class() === 'Le\Entity') throw new Error("DEBUG: can only be called from a class that extends the Entity class");
 			if(!isset(static::$db) || !isset(static::$table)) throw new Error("DEBUG: entity class missing database or table");
@@ -67,7 +67,7 @@ abstract class Entity {
 		}
 	}
 
-	final public static function find($conditions = [], $additional = [], $return_objects = false){
+	public static function find($conditions = [], $additional = [], $return_objects = false){
 		if(self::$debug){
 			if(get_called_class() === 'Le\Entity') throw new Error("DEBUG: can only be called from a class that extends the Entity class");
 			if(!isset(static::$db) || !isset(static::$table)) throw new Error("DEBUG: entity class missing database or table");
@@ -99,7 +99,7 @@ abstract class Entity {
 		return $result;
 	}
 
-	final public static function delete($id){
+	public static function delete($id){
 		if(self::$debug){
 			if(get_called_class() === 'Le\Entity') throw new Error("DEBUG: can only be called from a class that extends the Entity class");
 			if(!isset(static::$db) || !isset(static::$table)) throw new Error("DEBUG: entity class missing database or table");
@@ -174,7 +174,7 @@ abstract class Entity {
 		$this->data = $result['data'];
 	}
 
-	final public function get($column = ''){
+	public function get($column = ''){
 		if(self::$debug && !is_string($column) && !is_numeric($column)) throw new Error("DEBUG: invalid column name");
 
 		if(is_string($column) && empty($column)) return $this->data; // returning the whole data array if column not provided
@@ -182,7 +182,7 @@ abstract class Entity {
 		return $this->data[$column];
 	}
 
-	final public function set($arg1, $arg2 = null, $reindex = false){
+	public function set($arg1, $arg2 = null, $reindex = false){
 		if(is_array($arg1) && empty($arg1)) return true;
 
 		if(!is_array($arg1)){
@@ -257,21 +257,21 @@ abstract class Entity {
 		return true;
 	}
 
-	final public function reindex(){
+	public function reindex(){
 		$temp = $this->data;
 		unset($temp[static::$column_id], $temp[static::$column_hash]);
 		$this->set($temp, null, true);
 		return true;
 	}
 
-	final public function parent($class, $return_objects = false){
+	public function parent($class, $return_objects = false){
 		// get name of the column in current entity class where the parent id is stored
 		$column = array_search($class, static::$parents);
 
 		return $class::find([$class::$column_id => $this->get($column)], ['single' => true], $return_objects);
 	}
 
-	final public function children($class, $conditions = [], $additional = [], $return_objects = false){
+	public function children($class, $conditions = [], $additional = [], $return_objects = false){
 		$id = $this->get(static::$column_id);
 		// get name of the column in child entity class where the parent id is stored
 		$child_column = array_search(static::class, $class::$parents);
