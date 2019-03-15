@@ -142,8 +142,19 @@ Deletes an entity and all of its children recursively.
 #### Parameters
 `$id` is the id of the entity you want to delete
 
-### Return
+#### Return
 Returns `true` if successful.
+
+### `children_of($entities, $class, $conditions, $additional, $return_objects)`
+Should be called on the `\Le\Entity` class.
+
+#### Parameters
+`$entities` is an array containing entity objects
+
+`$class`, `$conditions`, `$additional`, `$return_objects` work the same way as those parameters in the object method `children()`
+
+#### Return
+Returns the same value as the object method `children()`.
 
 ## Object methods
 ### `get($property)`
