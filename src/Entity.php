@@ -137,6 +137,18 @@ abstract class Entity {
 		}
 	}
 
+	public static function children_of($objects, $class, $conditions = [], $additional = [], $return_objects = false){
+		$child_conditions = [];
+		foreach($objects as $object){
+			$id = $object->get($object::$column_id);
+			$child_column = array_search(get_class($object), $class::$parents);
+			$child_conditions[$child_column] = $id;
+		}
+
+		$conditions = array_merge($conditions, $child_conditions);
+		return $class::find($conditions, $additional, $return_objects);
+	}
+
 	// object method definitions, can only be used when the entity is loaded
 
 	protected $data = [], $indexed_columns = [], $unindexed_columns = [];
