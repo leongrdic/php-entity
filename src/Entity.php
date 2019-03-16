@@ -14,6 +14,9 @@ abstract class Entity {
 		$parents = []
 	;
 
+	public static function column_id(){ return static::$column_id; }
+	public static function column_hash(){ return static::$column_hash; }
+
 	final public static function load($id, $data_skip = null, $data_confirm = false){
 		if(isset(self::$store[static::class][$id]))
 			return self::$store[static::class][$id];
@@ -28,9 +31,9 @@ abstract class Entity {
 
 	public static function hash($id, $hash){
 		if(self::$debug){
-			if(get_called_class() === 'Le\Entity') throw new Error("DEBUG: can only be called from a class that extends the Entity class");
-			if(!isset(static::$db) || !isset(static::$table)) throw new Error("DEBUG: entity class missing database or table");
-			if(empty($id)) throw new Error("DEBUG: id empty");
+			if(get_called_class() === 'Le\Entity') throw new \Error("DEBUG: can only be called from a class that extends the Entity class");
+			if(!isset(static::$db) || !isset(static::$table)) throw new \Error("DEBUG: entity class missing database or table");
+			if(empty($id)) throw new \Error("DEBUG: id empty");
 		}
 
 		if(empty(static::$column_hash)) return false;
@@ -42,14 +45,14 @@ abstract class Entity {
 
 	public static function create($data){
 		if(self::$debug){
-			if(get_called_class() === 'Le\Entity') throw new Error("DEBUG: can only be called from a class that extends the Entity class");
-			if(!isset(static::$db) || !isset(static::$table)) throw new Error("DEBUG: entity class missing database or table");
-			if(!is_array($data) || empty($data)) throw new Error("DEBUG: data array missing");
+			if(get_called_class() === 'Le\Entity') throw new \Error("DEBUG: can only be called from a class that extends the Entity class");
+			if(!isset(static::$db) || !isset(static::$table)) throw new \Error("DEBUG: entity class missing database or table");
+			if(!is_array($data) || empty($data)) throw new \Error("DEBUG: data array missing");
 
 			// check if any parent ids are missing
 			foreach(static::$parents as $parent => $uu)
 				if(!isset($data[$parent]))
-						throw new Error("DEBUG: missing parent id for entity");
+						throw new \Error("DEBUG: missing parent id for entity");
 		}
 
 		try{
@@ -67,42 +70,68 @@ abstract class Entity {
 		}
 	}
 
-	public static function find($conditions = [], $additional = [], $return_objects = false){
-		if(self::$debug){
-			if(get_called_class() === 'Le\Entity') throw new Error("DEBUG: can only be called from a class that extends the Entity class");
-			if(!isset(static::$db) || !isset(static::$table)) throw new Error("DEBUG: entity class missing database or table");
-		}
+	public static function query_get_entities($conditions, $additional){
+		if(isset($additional['single']) && $additional['single'])
+			{ $additional['single'] = false; $additional['limit'] = 1; }
 
-		$column_id = static::$column_id;
-		$column_hash = static::$column_hash;
-		$columns =
-			( isset($additional['columns']) && !$return_objects )
-			? $additional['columns']
-			: ( $return_objects ? '*' : ( $column_id. ( $column_hash ? ', ' . $column_hash : '' ) ) )
-		;
+		$result = static::$db::$instance->get(static::$table, '*', $conditions, $additional);
+		foreach($result['data'] as $entity)
+			$list[] = static::load($entity[static::$column_id], $entity, 'le_data_from_find');
+
+		return $list ?? [];
+	}
+
+	public static function query_get_array($conditions, $additional){
+		$columns = [static::$column_id];
+		if(static::$column_hash) $columns[] = static::$column_hash;
+
+		if(isset($additional['single']) && $additional['single'])
+			{ $additional['single'] = false; $additional['limit'] = 1; }
+
 		$result = static::$db::$instance->get(static::$table, $columns, $conditions, $additional);
+		return $result['data'];
+	}
+
+	public static function count($conditions = []){
+		$column = 'COUNT(' . static::$column_id . ')';
+		$result = static::$db::$instance->get(static::$table, $column, $conditions, ['single' => true]);
+		return $result['data'][$column];
+	}
+
+	public static function find($conditions = [], $additional = []){
+		if(self::$debug){
+			if(get_called_class() === 'Le\Entity') throw new \Error("DEBUG: can only be called from a class that extends the Entity class");
+			if(!isset(static::$db) || !isset(static::$table)) throw new \Error("DEBUG: entity class missing database or table");
+		}
 
 		if(isset($additional['single']) && $additional['single']){
-			if(!$result['count']) return ['count' => 0];
+			if(isset($additional['array']) && $additional['array'])
+				$result = static::query_get_array($conditions, $additional);
+			else
+				$result = static::query_get_entities($conditions, $additional);
 
-			if($return_objects){
-				$result['object'] = static::load($result['data'][$column_id], $result['data'], 'le_data_from_find');
-				unset($result['data']);
-			}
-		}else{
-			if($return_objects && $result['count']){
-				foreach($result['data'] as $key => $entity)
-					$result['data'][$key] = static::load($entity[$column_id], $entity, 'le_data_from_find');
-			}
+			if(empty($result)) throw new EntityNotFoundException();
+			return $result[0];
 		}
 
-		return $result;
+		return new EntitySet(static::class, [$conditions], $additional);
+	}
+
+	public static function children_of($objects, $class, $conditions = [], $additional = []){
+		foreach($objects as $object){
+			$id = $object->get($object::$column_id);
+			$child_column = array_search(get_class($object), $class::$parents);
+			$child_conditions[$child_column] = $id;
+		}
+
+		$conditions = array_merge($conditions, $child_conditions ?? []);
+		return $class::find($conditions, $additional);
 	}
 
 	public static function delete($id){
 		if(self::$debug){
-			if(get_called_class() === 'Le\Entity') throw new Error("DEBUG: can only be called from a class that extends the Entity class");
-			if(!isset(static::$db) || !isset(static::$table)) throw new Error("DEBUG: entity class missing database or table");
+			if(get_called_class() === 'Le\Entity') throw new \Error("DEBUG: can only be called from a class that extends the Entity class");
+			if(!isset(static::$db) || !isset(static::$table)) throw new \Error("DEBUG: entity class missing database or table");
 		}
 
 		$table = static::$table;
@@ -137,25 +166,13 @@ abstract class Entity {
 		}
 	}
 
-	public static function children_of($objects, $class, $conditions = [], $additional = [], $return_objects = false){
-		$child_conditions = [];
-		foreach($objects as $object){
-			$id = $object->get($object::$column_id);
-			$child_column = array_search(get_class($object), $class::$parents);
-			$child_conditions[$child_column] = $id;
-		}
-
-		$conditions = array_merge($conditions, $child_conditions);
-		return $class::find($conditions, $additional, $return_objects);
-	}
-
 	// object method definitions, can only be used when the entity is loaded
 
 	protected $data = [], $indexed_columns = [], $unindexed_columns = [];
 
 	// $data_confirm is supposed to prevent accidental passing of entity data
 	final private function __construct($id, $data_skip = null, $data_confirm = false){
-		if(self::$debug && (!isset(static::$db) || !isset(static::$table))) throw new Error("DEBUG: entity class missing database or table");
+		if(self::$debug && (!isset(static::$db) || !isset(static::$table))) throw new \Error("DEBUG: entity class missing database or table");
 
 		$table = static::$table;
 		$column_id = static::$column_id;
@@ -170,7 +187,7 @@ abstract class Entity {
 		}
 
 		// don't proceed if the unindexed data column isn't found in the table
-		if(self::$debug && !isset($result['data'][$column_data])) throw new Error("DEBUG: unindexed data column not found in table");
+		if(self::$debug && !isset($result['data'][$column_data])) throw new \Error("DEBUG: unindexed data column not found in table");
 
 		// decode the unindexed data
 		$unindexed_data = json_decode($result['data'][$column_data], true);
@@ -187,7 +204,7 @@ abstract class Entity {
 	}
 
 	public function get($column = ''){
-		if(self::$debug && !is_string($column) && !is_numeric($column)) throw new Error("DEBUG: invalid column name");
+		if(self::$debug && !is_string($column) && !is_numeric($column)) throw new \Error("DEBUG: invalid column name");
 
 		if(is_string($column) && empty($column)) return $this->data; // returning the whole data array if column not provided
 		if(!isset($this->data[$column])) return null; // if value isn't set (column doesn't exist)
@@ -195,7 +212,7 @@ abstract class Entity {
 	}
 
 	public function set($arg1, $arg2 = null, $reindex = false){
-		if(is_array($arg1) && empty($arg1)) return true;
+		if(is_array($arg1) && empty($arg1)) return $this;
 
 		if(!is_array($arg1)){
 			$arg1 = [$arg1 => $arg2];
@@ -212,9 +229,9 @@ abstract class Entity {
 
 		foreach($arg1 as $column => $value){
 			if(self::$debug){
-				if(!is_string($column) && !is_numeric($column) || empty($column)) throw new Error("DEBUG: invalid column name");
-				if($column === $column_id || $column === $column_hash) throw new Error("DEBUG: column name can't be id or hash column names");
-				if(!is_string($value) && !is_numeric($value) && !is_null($value) && !is_bool($value)) throw new Error("DEBUG: invalid value");
+				if(!is_string($column) && !is_numeric($column) || empty($column)) throw new \Error("DEBUG: invalid column name");
+				if($column === $column_id || $column === $column_hash) throw new \Error("DEBUG: column name can't be id or hash column names");
+				if(!is_string($value) && !is_numeric($value) && !is_null($value) && !is_bool($value)) throw new \Error("DEBUG: invalid value");
 			}
 
 			if(is_bool($value)) $value = $value ? 1 : 0;
@@ -266,30 +283,103 @@ abstract class Entity {
 			static::$db::$instance->update($table, $updates, [$column_id => $this->data[$column_id]], ['limit' => 1]);
 		}
 
-		return true;
+		return $this;
 	}
 
 	public function reindex(){
 		$temp = $this->data;
 		unset($temp[static::$column_id], $temp[static::$column_hash]);
 		$this->set($temp, null, true);
-		return true;
+		return $this;
 	}
 
-	public function parent($class, $return_objects = false){
+	public function parent_conditions($class){
 		// get name of the column in current entity class where the parent id is stored
 		$column = array_search($class, static::$parents);
-
-		return $class::find([$class::$column_id => $this->get($column)], ['single' => true], $return_objects);
+		return [ $class::$column_id => $this->get($column) ];
 	}
 
-	public function children($class, $conditions = [], $additional = [], $return_objects = false){
-		$id = $this->get(static::$column_id);
-		// get name of the column in child entity class where the parent id is stored
-		$child_column = array_search(static::class, $class::$parents);
+	public function parent($class, $array = false){
+		return $class::find(
+			$this->parent_conditions($class),
+			['single' => true, 'array' => $array]
+		);
+	}
 
-		$conditions = array_merge($conditions, [$child_column => $id]);
-		return $class::find($conditions, $additional, $return_objects);
+	public function children_conditions($class){
+		// get name of the column in child entity class where the parent id is stored
+		$column = array_search(static::class, $class::$parents);
+		$id = $this->get(static::$column_id);
+		return [$column => $id];
+	}
+
+	public function children($class, $conditions = [], $additional = []){
+		return $class::find(
+			array_merge($conditions, $this->children_conditions($class)),
+			$additional
+		);
+	}
+}
+
+final class EntitySet {
+	private $class, $conditions, $additional;
+	private $entities = null, $array = null;
+
+	public function __construct($class, $conditions = [], $additional = []){
+		$this->class = $class;
+		$this->conditions = $conditions;
+		$this->additional = $additional;
+	}
+
+	public function entities(){
+		if($this->entities === null){
+			$this->entities = [];
+
+			foreach($this->conditions as $conditions)
+				$this->entities = array_merge($this->entities, $this->class::query_get_entities($conditions, $this->additional));
+		}
+		return $this->entities;
+	}
+
+	public function array(){
+		if($this->array === null){
+			$this->array = [];
+
+			if($this->entities === null){
+				foreach($this->conditions as $conditions)
+					$this->array = array_merge($this->array, $this->class::query_get_array($conditions, $this->additional));
+			}else{
+				$id = $this->class::column_id();
+				$hash = $this->class::column_hash();
+
+				foreach($this->entities as $entity){
+					$data = [$id => $entity->get($id)];
+					if($hash) $data[$hash] = $entity->get($hash);
+					$this->array[] = $data;
+				}
+			}
+		}
+		return $this->array;
+	}
+
+	public function set($arg1, $arg2 = null){
+		foreach($this->entities() as $entity)
+			$entity->set($arg1, $arg2);
+		return $this;
+	}
+
+	public function parents($class){
+		foreach($this->entities() as $entity)
+			$conditions[] = $entity->parent_conditions($class);
+
+		return new self($class, $conditions??[], ['limit' => 1]);
+	}
+
+	public function children($class, $conditions = [], $additional = []){
+		foreach($this->entities() as $entity)
+			$query_conditions[] = array_merge($conditions, $entity->children_conditions($class));
+
+		return new self($class, $query_conditions??[], $additional);
 	}
 }
 
