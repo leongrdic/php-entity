@@ -70,7 +70,7 @@ abstract class Entity {
 		}
 	}
 
-	public static function query_get_entities($conditions, $additional){
+	public static function query_get_objects($conditions, $additional){
 		if(isset($additional['single']) && $additional['single'])
 			{ $additional['single'] = false; $additional['limit'] = 1; }
 
@@ -108,7 +108,7 @@ abstract class Entity {
 			if(isset($additional['array']) && $additional['array'])
 				$result = static::query_get_array($conditions, $additional);
 			else
-				$result = static::query_get_entities($conditions, $additional);
+				$result = static::query_get_objects($conditions, $additional);
 
 			if(empty($result)) throw new EntityNotFoundException();
 			return $result[0];
@@ -323,7 +323,7 @@ abstract class Entity {
 
 final class EntitySet {
 	private $class, $conditions, $additional;
-	private $entities = null, $array = null;
+	private $objects = null, $array = null;
 
 	public function __construct($class, $conditions = [], $additional = []){
 		$this->class = $class;
@@ -331,28 +331,28 @@ final class EntitySet {
 		$this->additional = $additional;
 	}
 
-	public function entities(){
-		if($this->entities === null){
-			$this->entities = [];
+	public function objects(){
+		if($this->objects === null){
+			$this->objects = [];
 
 			foreach($this->conditions as $conditions)
-				$this->entities = array_merge($this->entities, $this->class::query_get_entities($conditions, $this->additional));
+				$this->objects = array_merge($this->objects, $this->class::query_get_objects($conditions, $this->additional));
 		}
-		return $this->entities;
+		return $this->objects;
 	}
 
 	public function array(){
 		if($this->array === null){
 			$this->array = [];
 
-			if($this->entities === null){
+			if($this->objects === null){
 				foreach($this->conditions as $conditions)
 					$this->array = array_merge($this->array, $this->class::query_get_array($conditions, $this->additional));
 			}else{
 				$id = $this->class::column_id();
 				$hash = $this->class::column_hash();
 
-				foreach($this->entities as $entity){
+				foreach($this->objects as $entity){
 					$data = [$id => $entity->get($id)];
 					if($hash) $data[$hash] = $entity->get($hash);
 					$this->array[] = $data;
@@ -363,20 +363,20 @@ final class EntitySet {
 	}
 
 	public function set($arg1, $arg2 = null){
-		foreach($this->entities() as $entity)
+		foreach($this->objects() as $entity)
 			$entity->set($arg1, $arg2);
 		return $this;
 	}
 
 	public function parents($class){
-		foreach($this->entities() as $entity)
+		foreach($this->objects() as $entity)
 			$conditions[] = $entity->parent_conditions($class);
 
 		return new self($class, $conditions??[], ['limit' => 1]);
 	}
 
 	public function children($class, $conditions = [], $additional = []){
-		foreach($this->entities() as $entity)
+		foreach($this->objects() as $entity)
 			$query_conditions[] = array_merge($conditions, $entity->children_conditions($class));
 
 		return new self($class, $query_conditions??[], $additional);
