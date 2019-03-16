@@ -80,18 +80,31 @@ Returns `true` if the hashes match, or `false` if they don't (or the entity clas
 
 If the entity can't be found, an `\Le\EntityNotFoundException` is thrown.
 
-### `find($conditions, $additional, $return_objects)`
+### `count($conditions)`
+#### Parameters
+`$conditions` is optional, and represents an array containing key-value pairs of properties that the entities counted must match
+
+#### Returns
+A number.
+
+### `find($conditions, $additional)`
 #### Parameters
 `$conditions` and `$additional` are passed to the database module
 
-`$return_objects` determines whether you want just `id` and `hash` to be returned as an array, or the entity `object` with all properties; defaults to false
+`$additional['single']` determines if only a single entity should be returned or an `\Le\EntitySet`; defaults to `false`
+
+`$additional['array']` can only be used if `$additional['single']` is set `true` and determines if an array containing just the entity `ID` and `hash` should be returned instead of the entity object in order to avoid fetching unnecessary data from database; defaults to `false`
 
 #### Return
-If `$return_objects` is `false`
+If `$additional['single']` is `false`, returns an `\Le\EntitySet`.
+
+
+If `$additional['single']` is `true` and `$additional['array']` is `false`, returns an `Entity`.
+
+
+If `$additional['single']` is `true` and `$additional['array']` is `true`, returns an array:
 ```php
 [
-  'count' = > 3,
-  'data' => [
     [
       'id' => 1,
       'hash' => 16329136 // only if hashes are enabled for entity class
@@ -101,33 +114,18 @@ If `$return_objects` is `false`
 ]
 ```
 
-If `$return_objects` is `false` and `single` is `true`
-```php
-[
-  'count' = > 3,
-  'data' => [
-    'id' => 1,
-    'hash' => 16329136 // only if hashes are enabled for entity class
-  ],
-  ...
-]
-```
+Important: if `$additional['single']` is `true` and there are no results, a `\Le\EntityNotFoundException` is thrown.
 
-If `$return_objects` is `true`
-```php
-[
-  'count' => 3,
-  'data' => [ Object, Object, Object ]
-]
-```
+### `children_of($entities, $class, $conditions, $additional)`
+Should be called on the `\Le\Entity` class.
 
-If `$return_objects` is `true` and additional `single` is `true`
-```php
-[
-  'count' => 3,
-  'object' => Object
-]
-```
+#### Parameters
+`$entities` is an array containing entity objects
+
+`$class`, `$conditions` and `$additional` work the same way as same named parameters in the object method `children()`
+
+#### Return
+Returns the same value as the object method `children()`.
 
 ### `create($data)`
 #### Parameters
@@ -145,17 +143,6 @@ Deletes an entity and all of its children recursively.
 #### Return
 Returns `true` if successful.
 
-### `children_of($entities, $class, $conditions, $additional, $return_objects)`
-Should be called on the `\Le\Entity` class.
-
-#### Parameters
-`$entities` is an array containing entity objects
-
-`$class`, `$conditions`, `$additional`, `$return_objects` work the same way as those parameters in the object method `children()`
-
-#### Return
-Returns the same value as the object method `children()`.
-
 ## Object methods
 ### `get($property)`
 #### Parameters
@@ -171,35 +158,59 @@ All unindexed properties are automatically grouped and encoded.
 `$properties` is an array containing key-value pairs of all properties that we need to update.
 
 #### Return
-Returns `true` if successful.
+Returns the entity object to allow chaining.
 
 ### `reindex()`
 The purpose of this method is to regenerate the unindexed data column in the database in case there were changes in the table schema (e.g. an unindexed column is now indexed, or vice versa).
 
 #### Return
-Returns `true` if successful.
+Returns the entity object to allow chaining.
 
-### `parent($class, $return_objects)`
+### `parent($class, $array)`
 
 #### Parameters
 `$class` is the class name (e.g. User::class) of the parent we're looking for
 
-`$return_objects` shares behavior with the `find()` static method
+`$array` is passed as `$additional['array']` to the `find()` static method; defaults to `false`
 
 #### Return
-The return value is same as for `find()` static method.
+The return value is same as for the `find()` static method.
 
-### `children($class, $conditions, $additional, $return_objects)`
+### `children($class, $conditions, $additional)`
 #### Parameters
-`$class` is the class name (e.g. User::class) of the children we're looking for
+`$class` is the class name (e.g. `User::class`) of the children we're looking for
 
-`$conditions`, `$additional` and `$return_objects` share the behavior with the same parameters for the `find()` static method
+`$conditions` and `$additional` share the behavior with the same named parameters for the `find()` static method
 
 #### Return
-The return value is same as for `find()` static method.
+The return value is same as for the `find()` static method.
+
+## `\Le\EntitySet`
+This is a class whose objects are returned as return values of the entity methods: `find()` and `children_of` (static); and `children()`.
+
+It consists of a list of entities of a specific class and allows avoiding loops when using some relations between entities.
+
+### Methods
+#### `array()`
+Returns an array of entity `ID`s and `hash`es in the entity set.
+
+#### `objects()`
+Returns an array containing the entity objects in the entity set.
+
+#### `set($properties)`
+Acts the same as the `set()` method on an entity object except it affects all entities in the set.
+
+Returns the same entity set to allow chaining.
+
+#### `parents($class)`
+Returns a new `\Le\EntitySet` with all parents of the specific `$class` of all entities within the entity set.
+
+#### `children($class, $conditions, $additional)`
+Returns a new `\Le\EntitySet` containing children of the specific `$class` that match the specific `$conditions` of all entities within the entity set.
+
+`$additional` affects children of each entity within the set separately, so e.g. setting the `limit` to `1` would mean "get only one child of each entity from the set".
 
 ## Error handling & debugging
-
 Debugging can help you determine mistakes in your code that utilizes `php-entity` like invalid parameter formats or wrong data types.
 To enable debugging, set the static variable `$debug` of the class to `true`:
 ```php
