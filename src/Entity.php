@@ -150,7 +150,7 @@ abstract class Entity {
 				$child_column_id = $entity::$column_id;
 
 				// fetching all child entities' ids
-				$result = $entity::$db::$db->get($entity::$table, $child_column_id, [$parent_column => $id]);
+				$result = $entity::$db::$instance->get($entity::$table, $child_column_id, [$parent_column => $id]);
 				if(!$result['count']) continue;
 
 				// recursively delete all child entities
