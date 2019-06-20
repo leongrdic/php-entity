@@ -95,7 +95,7 @@ abstract class Entity {
 	public static function count($conditions = []){
 		$column = 'COUNT(' . static::$column_id . ')';
 		$result = static::$db::$instance->get(static::$table, $column, $conditions, ['single' => true]);
-		return $result['data'][$column];
+		return (int) $result['data'][$column];
 	}
 
 	public static function find($conditions = [], $additional = []){
